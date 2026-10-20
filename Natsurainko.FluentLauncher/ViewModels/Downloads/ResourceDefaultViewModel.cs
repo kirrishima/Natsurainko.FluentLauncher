@@ -1,7 +1,11 @@
-﻿using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
-using CommunityToolkit.WinUI;
 using FluentLauncher.Infra.UI.Navigation;
+using FluentLauncher.Infra.UI.Notification;
+using Microsoft.Extensions.Logging;
+using Microsoft.UI.Xaml.Controls;
+using Natsurainko.FluentLauncher.Services.Network;
+using Natsurainko.FluentLauncher.Services.UI.Notification;
 using Natsurainko.FluentLauncher.Services.Settings;
 using Natsurainko.FluentLauncher.Services.UI;
 using Natsurainko.FluentLauncher.Utils;
@@ -10,6 +14,7 @@ using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
+using System.Globalization;
 using System.Threading;
 using System.Threading.Tasks;
 using static Natsurainko.FluentLauncher.Services.UI.SearchProviderService;
@@ -27,6 +32,49 @@ internal abstract partial class ResourceDefaultViewModel(
     private CancellationTokenSource? _cancellationTokenSource;
     private BindedSearchProvider? _bindedSearchProvider;
     private bool depressCategoryChangedInvokeSearch = true;
+    private const int PageSize = 50;
+    private int _searchGeneration;
+    private int? _lastPage;
+    private bool _slugMode;
+
+    public event Action? PageChanged;
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(CurrentPageLabel))]
+    public partial int CurrentPage { get; set; } = 1;
+
+    [ObservableProperty]
+    public partial bool HasNextPage { get; set; }
+
+    public string CurrentPageLabel => string.Format(CultureInfo.CurrentCulture, LocalizedStrings.Catalog__Page, CurrentPage);
+
+    partial void OnCurrentPageChanged(int value) => UpdatePageCommands();
+    partial void OnHasNextPageChanged(bool value) => UpdatePageCommands();
+    partial void OnLoadingChanged(bool value) => UpdatePageCommands();
+
+    void UpdatePageCommands()
+    {
+        PreviousPageCommand.NotifyCanExecuteChanged();
+        NextPageCommand.NotifyCanExecuteChanged();
+        RefreshCommand.NotifyCanExecuteChanged();
+    }
+
+    bool CanPreviousPage() => !Loading && CurrentPage > 1;
+    bool CanNextPage() => !Loading && HasNextPage;
+    bool CanRefresh() => !Loading;
+
+    [RelayCommand(CanExecute = nameof(CanPreviousPage))]
+    Task PreviousPage() => LoadPageAsync(CurrentPage - 1);
+
+    [RelayCommand(CanExecute = nameof(CanNextPage))]
+    Task NextPage() => LoadPageAsync(CurrentPage + 1);
+
+    [RelayCommand(CanExecute = nameof(CanRefresh))]
+    Task Refresh()
+    {
+        _lastPage = null;
+        return LoadPageAsync(CurrentPage, refresh: true);
+    }
 
     [ObservableProperty]
     public partial ObservableCollection<object>? SearchResult { get; set; }
@@ -102,6 +150,9 @@ internal abstract partial class ResourceDefaultViewModel(
         _cancellationTokenSource?.Cancel();
         _cancellationTokenSource?.Dispose();
 
+        ++_searchGeneration;
+        Loading = false;
+
         GC.Collect();
     }
 
@@ -121,59 +172,110 @@ internal abstract partial class ResourceDefaultViewModel(
         SearchReceiveHandle(string.Empty);
     }
 
-    void SearchReceiveHandle(string query, bool slugMode = false)
+    async void SearchReceiveHandle(string query, bool slugMode = false)
+    {
+        if (!IsActive) return;
+
+        SearchQuery = query;
+        _slugMode = slugMode;
+        _lastPage = null;
+        CurrentPage = 1;
+        HasNextPage = false;
+        SearchResult = [];
+        Searched = !string.IsNullOrEmpty(query);
+        await LoadPageAsync(1);
+    }
+
+    async Task LoadPageAsync(int page, bool refresh = false)
     {
         if (!IsActive) return;
 
         _cancellationTokenSource?.Cancel();
         _cancellationTokenSource?.Dispose();
         _cancellationTokenSource = new();
+        var token = _cancellationTokenSource.Token;
+        int generation = ++_searchGeneration;
+        int source = ResourceSource;
+        string query = SearchQuery;
+        string category = SelectedCategory;
+        string? version = string.IsNullOrWhiteSpace(FilteredVersion)
+            || FilteredVersion == LocalizedStrings.ResourceCategories__All ? null : FilteredVersion;
+        bool slugMode = _slugMode;
+        Loading = true;
+        LoadFailed = false;
 
-        Task.Run(async () =>
+        async Task<object[]> FetchAsync()
         {
-            await Dispatcher.EnqueueAsync(() =>
+            return source switch
             {
-                SearchResult = [];
-                Loading = true;
+                0 => (await curseForgeClient.SearchResourcesAsync(query, CurseForgeResourceType,
+                    categoryId: CurseForgeCategories[category], version: version, slugMode: slugMode,
+                    cancellationToken: token, pageSize: PageSize, offset: (page - 1) * PageSize)).ToArray(),
+                1 => (await modrinthClient.SearchResourcesAsync(query, ModrinthResourceType,
+                    categories: category == "all" ? null : category, version: version,
+                    cancellationToken: token, pageSize: PageSize, offset: (page - 1) * PageSize)).ToArray(),
+                _ => []
+            };
+        }
+
+        try
+        {
+            object[] result = refresh
+                ? await App.GetService<CatalogPageCache>().RefreshAsync(FetchAsync)
+                : await FetchAsync();
+            if (token.IsCancellationRequested || generation != _searchGeneration || !IsActive) return;
+
+            if (result.Length == 0 && page > CurrentPage)
+            {
+                _lastPage = CurrentPage;
+                HasNextPage = false;
+                ShowCatalogNotice(LocalizedStrings.Catalog__LastPage);
+                return;
+            }
+
+            // A refreshed page may have disappeared since the catalog was last visited.
+            if (result.Length == 0 && page > 1)
+            {
+                ShowCatalogNotice(LocalizedStrings.Catalog__LastPage);
+                await LoadPageAsync(1, refresh);
+                return;
+            }
+
+            if (result.Length < PageSize) _lastPage = page;
+            SearchResult = new(result);
+            CurrentPage = page;
+            HasNextPage = result.Length == PageSize && (!_lastPage.HasValue || page < _lastPage.Value)
+                && (source != 0 || page * PageSize < 10000);
+            App.GetService<ILogger<ResourceDefaultViewModel>>().LogInformation(
+                "Catalog {Source} page {Page}: {Count} results", source == 0 ? "CurseForge" : "Modrinth", page, result.Length);
+            PageChanged?.Invoke();
+
+            if (slugMode && source == 0 && result.Length == 1)
+                ResourceItemInvoke(result[0]);
+        }
+        catch (OperationCanceledException) when (token.IsCancellationRequested) { }
+        catch (Exception ex)
+        {
+            if (generation != _searchGeneration || token.IsCancellationRequested || !IsActive) return;
+            LoadFailed = true;
+            App.GetService<ILogger<ResourceDefaultViewModel>>().LogError(ex,
+                "Catalog {Source} page {Page} failed (category {Category}, version {Version})", source, page, category, version);
+            App.GetService<INotificationService>().Show<InfoBar>(new DefaultNotification
+            {
+                Title = LocalizedStrings.Catalog__SearchFailed,
+                Message = LocalizedStrings.Catalog__Retry,
+                Type = NotificationType.Error,
+                Delay = 8
             });
-
-            object[]? result = null;
-
-            try
-            {
-                result = ResourceSource switch
-                {
-                    0 => (await curseForgeClient.SearchResourcesAsync(query, CurseForgeResourceType,
-                            categoryId: CurseForgeCategories[SelectedCategory],
-                            version: FilteredVersion == LocalizedStrings.ResourceCategories__All ? null : FilteredVersion,
-                            slugMode: slugMode,
-                            cancellationToken: _cancellationTokenSource.Token)).ToArray(),
-                    1 => (await modrinthClient.SearchResourcesAsync(query, ModrinthResourceType,
-                            categories: SelectedCategory == "all" ? null : SelectedCategory,
-                            version: FilteredVersion == LocalizedStrings.ResourceCategories__All ? null : FilteredVersion,
-                            cancellationToken: _cancellationTokenSource.Token)).ToArray(),
-                    _ => null
-                };
-            }
-            catch
-            {
-                await Dispatcher.EnqueueAsync(() => LoadFailed = true);
-            }
-            finally
-            {
-                await Dispatcher.EnqueueAsync(() =>
-                {
-                    Loading = false;
-                    SearchResult = result == null ? null : new(result);
-                    Searched = !string.IsNullOrEmpty(query);
-                    SearchQuery = query;
-
-                    if (slugMode && ResourceSource == 0 && result?.Length == 1)
-                        ResourceItemInvoke(result.First());
-                });
-            }
-        }, _cancellationTokenSource.Token);
+        }
+        finally
+        {
+            if (generation == _searchGeneration) Loading = false;
+        }
     }
+
+    static void ShowCatalogNotice(string title) => App.GetService<INotificationService>().Show<InfoBar>(
+        new DefaultNotification { Title = title, Delay = 5 });
 
     void UpdateFiltersSource()
     {

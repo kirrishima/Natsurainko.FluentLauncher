@@ -15,6 +15,7 @@
     xmlns:toolkit_behaviors="using:CommunityToolkit.WinUI.Behaviors"
     mc:Ignorable="d">
 
+    <Grid RowDefinitions="*,Auto">
     <ListView
         x:Name="ListView"
         Padding="40,0,40,25"
@@ -166,4 +167,12 @@
             </VisualStateGroup>
         </VisualStateManager.VisualStateGroups>
     </ListView>
+    <controls:WrapPanel Grid.Row="1" Margin="20,12,20,20" HorizontalAlignment="Center" HorizontalSpacing="12" VerticalSpacing="8">
+        <Button x:Uid="Catalog_Previous" Content="Previous" Command="{x:Bind VM.PreviousPageCommand}" />
+        <TextBlock VerticalAlignment="Center" Text="{x:Bind VM.CurrentPageLabel, Mode=OneWay}" />
+        <Button x:Uid="Catalog_Next" Content="Next" Command="{x:Bind VM.NextPageCommand}" />
+        <Button x:Uid="Catalog_Refresh" Content="Refresh" Command="{x:Bind VM.RefreshCommand}" />
+        <ProgressRing Width="20" Height="20" IsActive="{x:Bind VM.Loading, Mode=OneWay}" />
+    </controls:WrapPanel>
+    </Grid>
 </Page>
