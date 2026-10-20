@@ -95,6 +95,7 @@ try
     Check(errors.Count == 0, "cache produced no unexpected I/O errors");
     await PaginationTests.Run(Check, cache);
     await VersionTests.Run(Check);
+    await NavigationTests.Run(Check);
     if (args.Contains("--live-versions")) await VersionTests.RunLive(Check);
 }
 finally

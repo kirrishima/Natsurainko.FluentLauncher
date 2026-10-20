@@ -21,6 +21,7 @@ internal static class PaginationTests
         App.Set<INotificationService>(notices);
         App.Set<ILogger<ResourceDefaultViewModel>>(NullLogger<ResourceDefaultViewModel>.Instance);
         App.Set(cache);
+        App.Set(new CatalogNavigationState());
         var server = new CatalogServer();
         using var http = new HttpClient(server);
         App.Set(new CatalogVersionService(http, "test", cache, NullLogger<CatalogVersionService>.Instance));
@@ -87,9 +88,10 @@ internal static class PaginationTests
         protected override ModrinthResourceType ModrinthResourceType => ModrinthResourceType.McMod;
         protected override string[] ModrinthCategories => ["all", "optimization"];
         protected override Dictionary<string, int> CurseForgeCategories => new() { ["All"] = 0 };
-        public void Start()
+        public void Start(string? query = null, string route = "Test/Default")
         {
-            ((INavigationAware)this).OnNavigatedTo(null);
+            ((INavigationAware)this).SetNavigationKey(route);
+            ((INavigationAware)this).OnNavigatedTo(query);
             IsActive = true;
             OnLoaded();
         }
@@ -102,7 +104,7 @@ internal static class PaginationTests
     }
     sealed class CatalogServer : HttpMessageHandler
     {
-        public Dictionary<string, TaskCompletionSource<bool>> Pending { get; } = [];
+        public System.Collections.Concurrent.ConcurrentDictionary<string, TaskCompletionSource<bool>> Pending { get; } = [];
         protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken token)
         {
             if (request.RequestUri!.AbsolutePath == "/v2/tag/game_version")

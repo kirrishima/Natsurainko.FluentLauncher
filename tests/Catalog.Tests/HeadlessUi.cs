@@ -55,6 +55,7 @@ namespace Natsurainko.FluentLauncher.Services.UI
 {
     internal sealed class SearchProviderService
     {
+        public string Input { get; set; } = "";
         public Action<string>? Submit { get; private set; }
         public BindedSearchProvider BindProvider(object owner) => new(this);
         internal sealed class Suggestion { }
@@ -62,8 +63,9 @@ namespace Natsurainko.FluentLauncher.Services.UI
         {
             public void BindQuerySubmition(Action<string> submit) => owner.Submit = submit;
             public void BindSuggestionsSource(Func<string, IEnumerable<Suggestion>> source) { }
-            public void ClearInput() { }
-            public void Dispose() => owner.Submit = null;
+            public void ClearInput() => owner.Input = "";
+            public void SetInput(string query) => owner.Input = query;
+            public void Dispose() { owner.Submit = null; owner.Input = ""; }
         }
     }
 }

@@ -74,6 +74,7 @@ internal static class VersionTests
             server.EmptyProvider = false;
             server.DelayModrinth = true;
             App.Set(cache);
+            App.Set(new CatalogNavigationState());
             App.Set(service);
             App.Set<ILogger<ResourceDefaultViewModel>>(NullLogger<ResourceDefaultViewModel>.Instance);
             var notices = new Notices();
