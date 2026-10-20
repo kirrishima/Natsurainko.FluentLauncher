@@ -8,7 +8,9 @@ A page with fewer than 50 results ends pagination. If a full final page is follo
 
 Each catalog remembers its current provider, submitted query, filters, page, known end and scroll position for the current application session. Returning from a resource restores that state and the search-box text, even when the navigation framework creates a new view model. Switching providers retains their individual page/category/scroll state when the query and version still match. Explicitly navigating to a new search starts on page one. Only navigation metadata is retained in memory; resource responses continue to use the bounded disk cache and its expiration policy.
 
-HTTP cache access, response parsing and version-list processing run outside the UI thread. Catalog navigation no longer forces a full garbage collection. Page loads log their elapsed time; cached responses also produce a cache-hit log entry. Resource buttons are disabled during a provider/page change so old results cannot be opened under the new provider heading.
+HTTP cache access, response parsing and version-list processing run outside the UI thread. Catalog navigation no longer forces a full garbage collection. Page loads log their elapsed time; cached responses also produce a cache-hit log entry. Resource buttons ignore activation during a provider/page change so old results cannot be opened under the new provider heading; their appearance remains unchanged.
+
+The virtualized list disables scrolling placeholders and item/header transitions. Loading and empty-result indicators do not change the scrollable header's height. Icons decode at their displayed logical width instead of their original resolution. Scroll restoration waits for normal layout without forcing a synchronous layout pass, runs only once, and is cancelled on user input, a newer restore request or page unload.
 
 ## Resource content height
 
@@ -45,6 +47,8 @@ dotnet run --project tests/Catalog.Tests/Catalog.Tests.csproj
 The executable tests compile the production cache, HTTP handler and catalog view model. Minimal headless UI adapters replace Windows boundaries, while actual FluentCore clients construct and parse requests. They cover disk persistence, TTL, LRU, limits, clearing, refresh, response validation, pagination boundaries, timed notification configuration, filter resets and overlapping/cancelled searches.
 
 For UI verification, check both providers, navigate forwards/backwards, change filters, refresh, and inspect the cache section in a narrow and a wide window. Confirm a short final page disables Next; a full final page followed by an empty response must retain its contents and show the timed InfoBar. Cache hits are logged as `Catalog cache hit`; page counts are logged separately.
+
+In both light and dark themes, scroll rapidly to the bottom and back: resource rows must not be replaced by solid scrolling placeholders. During provider/filter changes, confirm that loading does not briefly show “No results” or move the filter header. Return from a resource and immediately scroll manually; a queued restoration must not pull the viewport back after that input. These rendering checks require the deployed WinUI application; the headless regression checks do not validate animation or frame rendering.
 
 ## Publishing the branch
 
