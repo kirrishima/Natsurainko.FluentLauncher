@@ -252,7 +252,12 @@
 
   <!-- Update localization before compilation -->
   <Target Name="PreBuild" BeforeTargets="PreBuildEvent">
-    <Exec Command="cd ..&#xD;&#xA;pwsh ./update-localization.ps1" />
+    <Exec WorkingDirectory="$(MSBuildProjectDirectory)\.." Command="powershell.exe -NoProfile -ExecutionPolicy Bypass -File &quot;$(MSBuildProjectDirectory)\..\update-localization.ps1&quot;" />
+    <!-- Include newly generated translations on the first build as well. -->
+    <ItemGroup>
+      <AdditionalFiles Remove="Assets\Strings\*.resw" />
+      <AdditionalFiles Include="Assets\Strings\*.resw" />
+    </ItemGroup>
   </Target>
 
   <!-- Add .resw files as additional files for source generation -->

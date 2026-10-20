@@ -1,0 +1,6 @@
+<Project>
+  <PropertyGroup>
+    <!-- Keep generated paths below MAX_PATH for long project names. -->
+    <GeneratedMSBuildEditorConfigFile>$(IntermediateOutputPath)generated.editorconfig</GeneratedMSBuildEditorConfigFile>
+  </PropertyGroup>
+</Project>
