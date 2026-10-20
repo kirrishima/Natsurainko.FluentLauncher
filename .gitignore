@@ -37,3 +37,4 @@ AppPackages
 .editorconfig
 *.pfx
 *.resw
+build-debug.log
