@@ -136,6 +136,36 @@
                     </StackPanel>
                 </controls:SettingsCard>
 
+                <TextBlock x:Uid="Catalog_CacheSection" Text="Catalog cache" Style="{ThemeResource SettingsSectionHeaderTextBlockStyle}" />
+
+                <controls:SettingsCard x:Uid="Catalog_CacheEnabled" Header="Cache catalog pages"
+                    Description="Save CurseForge and Modrinth search results between launches. Images and downloads are excluded."
+                    HeaderIcon="{xh:FontIcon Glyph=&#xE8B7;}">
+                    <ToggleSwitch IsOn="{x:Bind VM.EnableCatalogCache, Mode=TwoWay}" />
+                </controls:SettingsCard>
+
+                <controls:SettingsCard x:Uid="Catalog_CacheLifetime" Header="Cache lifetime (minutes)"
+                    IsEnabled="{x:Bind VM.EnableCatalogCache, Mode=OneWay}" HeaderIcon="{xh:FontIcon Glyph=&#xE823;}">
+                    <StackPanel Orientation="Horizontal" Spacing="10">
+                        <TextBlock VerticalAlignment="Center" Text="{x:Bind VM.CatalogCacheLifetimeMinutes, Mode=OneWay}" />
+                        <Slider Width="128" Minimum="5" Maximum="120" StepFrequency="5" SnapsTo="Ticks" TickFrequency="5"
+                            Value="{x:Bind VM.CatalogCacheLifetimeMinutes, Mode=TwoWay}" />
+                    </StackPanel>
+                </controls:SettingsCard>
+
+                <controls:SettingsCard x:Uid="Catalog_CacheSize" Header="Maximum cache size (MB)"
+                    Description="Shared by both catalogs. The least recently used pages are removed first."
+                    IsEnabled="{x:Bind VM.EnableCatalogCache, Mode=OneWay}" HeaderIcon="{xh:FontIcon Glyph=&#xEDA2;}">
+                    <StackPanel Orientation="Horizontal" Spacing="10">
+                        <TextBlock VerticalAlignment="Center" Text="{x:Bind VM.CatalogCacheMaxSizeMb, Mode=OneWay}" />
+                        <Slider Width="128" Minimum="1" Maximum="50" StepFrequency="1" SnapsTo="Ticks" TickFrequency="1"
+                            Value="{x:Bind VM.CatalogCacheMaxSizeMb, Mode=TwoWay}" />
+                    </StackPanel>
+                </controls:SettingsCard>
+
+                <controls:SettingsCard x:Uid="Catalog_CacheClear" Header="Clear cached pages" HeaderIcon="{xh:FontIcon Glyph=&#xE74D;}">
+                    <Button x:Uid="Catalog_CacheClearButton" Content="Clear cache" Command="{x:Bind VM.ClearCatalogCacheCommand}" />
+                </controls:SettingsCard>
             </StackPanel>
         </Border>
 
