@@ -9,6 +9,7 @@ using Microsoft.Win32;
 using Microsoft.Windows.Globalization;
 using Natsurainko.FluentLauncher.Services.Launch;
 using Natsurainko.FluentLauncher.Services.Network;
+using Natsurainko.FluentLauncher.Services.Settings;
 using Natsurainko.FluentLauncher.Services.UI;
 using Natsurainko.FluentLauncher.Services.UI.Messaging;
 using Natsurainko.FluentLauncher.Utils.Extensions;
@@ -34,11 +35,23 @@ internal partial class ResourceViewModel(
     SearchProviderService searchProviderService,
     CurseForgeClient curseForgeClient,
     ModrinthClient modrinthClient,
-    HttpClient httpClient) : PageVM, INavigationAware
+    HttpClient httpClient,
+    SettingsService settingsService) : PageVM, INavigationAware
 {
     private string _pageKey;
     private object _modResource = null!;
     private BindedSearchProvider _bindedSearchProvider;
+
+    [ObservableProperty]
+    public partial double DescriptionViewportHeight { get; set; } = 600;
+
+    [ObservableProperty]
+    public partial double ScreenshotsViewportHeight { get; set; } = 600;
+
+    partial void OnDescriptionViewportHeightChanged(double value) => settingsService.ResourceDescriptionHeight = value;
+    partial void OnScreenshotsViewportHeightChanged(double value) => settingsService.ResourceScreenshotsHeight = value;
+
+    private static double ViewportHeight(double value) => double.IsFinite(value) ? Math.Clamp(value, 300, 1600) : 600;
 
     #region Basic Properties
 
@@ -165,6 +178,8 @@ internal partial class ResourceViewModel(
 
     void INavigationAware.OnNavigatedTo(object parameter)
     {
+        DescriptionViewportHeight = ViewportHeight(settingsService.ResourceDescriptionHeight);
+        ScreenshotsViewportHeight = ViewportHeight(settingsService.ResourceScreenshotsHeight);
         _bindedSearchProvider = searchProviderService.BindProvider(this);
         _bindedSearchProvider.BindQuerySubmition(query =>
             GlobalNavigate(_pageKey.Replace("Resource", "Navigation"), query));

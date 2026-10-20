@@ -432,9 +432,16 @@
                                 </ItemsView>
                             </StackPanel>
 
+                            <StackPanel x:Name="ScreenshotsPanel" x:Load="{x:Bind VM.ShowScreenShots, Mode=OneWay}" Spacing="8">
+                                <StackPanel Orientation="Horizontal" Spacing="12">
+                                    <TextBlock x:Uid="Catalog_ContentHeight" Text="Content height" VerticalAlignment="Center" />
+                                    <Slider Width="180" Minimum="300" Maximum="1600" StepFrequency="25"
+                                        AutomationProperties.Name="{x:Bind local:ResourcePage.ContentHeightLabel}"
+                                        Value="{x:Bind VM.ScreenshotsViewportHeight, Mode=TwoWay}" />
+                                </StackPanel>
                             <ItemsView
                                 x:Name="ScreenshotsItemsView"
-                                x:Load="{x:Bind VM.ShowScreenShots, Mode=OneWay}"
+                                Height="{x:Bind VM.ScreenshotsViewportHeight, Mode=OneWay}"
                                 ItemsSource="{x:Bind VM.ScreenshotUrls, Mode=OneWay}">
                                 <ItemsView.Layout>
                                     <UniformGridLayout
@@ -447,7 +454,7 @@
                                 <ItemsView.ItemTemplate>
                                     <DataTemplate x:DataType="x:String">
                                         <ItemContainer>
-                                            <Image Stretch="UniformToFill">
+                                            <Image Stretch="Uniform">
                                                 <Image.Source>
                                                     <BitmapImage UriSource="{x:Bind}" />
                                                 </Image.Source>
@@ -456,11 +463,19 @@
                                     </DataTemplate>
                                 </ItemsView.ItemTemplate>
                             </ItemsView>
+                            </StackPanel>
 
                             <StackPanel
                                 x:Name="DescriptionPanel"
                                 x:Load="{x:Bind VM.ShowDescription, Mode=OneWay}"
                                 Spacing="8">
+
+                                <StackPanel Orientation="Horizontal" Spacing="12">
+                                    <TextBlock x:Uid="Catalog_ContentHeight" Text="Content height" VerticalAlignment="Center" />
+                                    <Slider Width="180" Minimum="300" Maximum="1600" StepFrequency="25"
+                                        AutomationProperties.Name="{x:Bind local:ResourcePage.ContentHeightLabel}"
+                                        Value="{x:Bind VM.DescriptionViewportHeight, Mode=TwoWay}" />
+                                </StackPanel>
 
                                 <ProgressRing
                                     x:Name="DescriptionProgressRing"
@@ -469,18 +484,21 @@
                                     x:Load="{x:Bind VM.LoadingDescription, Mode=OneWay}"
                                     IsActive="{x:Bind VM.LoadingDescription, Mode=OneWay}" />
 
+                                <ScrollViewer x:Name="MarkdownViewport" x:Load="{x:Bind VM.IsMarkdown, Mode=OneWay}"
+                                    Height="{x:Bind VM.DescriptionViewportHeight, Mode=OneWay}" HorizontalScrollBarVisibility="Disabled">
                                 <controls:MarkdownTextBlock
                                     x:Name="DescriptionMarkdown"
-                                    x:Load="{x:Bind VM.IsMarkdown, Mode=OneWay}"
                                     Background="Transparent"
                                     Config="{x:Bind MarkdownConfig}"
                                     Loaded="DescriptionMarkdown_Loaded" />
+                                </ScrollViewer>
 
                                 <Border CornerRadius="4">
                                     <WebView2
                                         x:Name="DescriptionWebView2"
                                         x:FieldModifier="public"
                                         x:Load="{x:Bind VM.IsHtml, Mode=OneWay}"
+                                        Height="{x:Bind VM.DescriptionViewportHeight, Mode=OneWay}"
                                         Loaded="DescriptionWebView2_Loaded" />
                                 </Border>
                             </StackPanel>

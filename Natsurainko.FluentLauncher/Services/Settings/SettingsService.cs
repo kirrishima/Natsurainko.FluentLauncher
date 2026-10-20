@@ -105,6 +105,12 @@ public partial class SettingsService : SettingsContainer
     [SettingItem(Default = 5, Converter = typeof(JsonStringConverter<int>))]
     public partial int CatalogCacheMaxSizeMb { get; set; }
 
+    [SettingItem(Default = 600.0, Converter = typeof(JsonStringConverter<double>))]
+    public partial double ResourceDescriptionHeight { get; set; }
+
+    [SettingItem(Default = 600.0, Converter = typeof(JsonStringConverter<double>))]
+    public partial double ResourceScreenshotsHeight { get; set; }
+
     #endregion
 
     [SettingItem(Default = "")]
