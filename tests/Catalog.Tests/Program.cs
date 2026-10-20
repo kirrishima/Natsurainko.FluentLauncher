@@ -93,6 +93,7 @@ try
     query = HttpUtility.ParseQueryString(transport.Requests.Last().Query);
     Check(query["pageSize"] == "50" && query["index"] == "50" && query["categoryId"] == null, "CurseForge paging preserves the all-categories fix");
     Check(errors.Count == 0, "cache produced no unexpected I/O errors");
+    await PaginationTests.Run(Check, cache);
 }
 finally
 {

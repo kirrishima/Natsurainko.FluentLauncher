@@ -34,13 +34,21 @@ internal sealed class CatalogCacheHandler(CatalogPageCache cache, ILogger<Catalo
         }
 
         var response = await base.SendAsync(request, cancellationToken);
-        if (response.IsSuccessStatusCode)
+        try
         {
-            var bytes = await response.Content.ReadAsByteArrayAsync(cancellationToken);
-            if (IsSearchResponse(bytes, modrinth))
-                await cache.WriteAsync(key, bytes, generation, cancellationToken);
+            if (response.IsSuccessStatusCode)
+            {
+                var bytes = await response.Content.ReadAsByteArrayAsync(cancellationToken);
+                if (IsSearchResponse(bytes, modrinth))
+                    await cache.WriteAsync(key, bytes, generation, cancellationToken);
+            }
+            return response;
         }
-        return response;
+        catch
+        {
+            response.Dispose();
+            throw;
+        }
     }
 
     private static ByteArrayContent CreateContent(byte[] bytes)
