@@ -43,7 +43,7 @@ internal static class NavigationTests
 
             // The navigation framework creates a new VM and replays the original route parameter.
             var restored = new PaginationTests.TestCatalog(http, search);
-            restored.Start("initial-query", "Mods/Default");
+            restored.Start("initial-query", "Mods/Default", history: true);
             await Wait(() => !restored.Loading);
             check(restored.ResourceSource == 1 && restored.SearchQuery == "edited-query" && search.Input == "edited-query",
                 "Back restores the edited search and search box instead of replaying the initial query");
@@ -75,6 +75,19 @@ internal static class NavigationTests
             check(newSearch.SearchQuery == "brand-new-query" && newSearch.CurrentPage == 1 && newSearch.ScrollOffset == 0,
                 "an explicit new navigation query starts on page one");
             Leave(newSearch);
+
+            var originalQueryAgain = new PaginationTests.TestCatalog(http, search);
+            originalQueryAgain.Start("initial-query", "Mods/Default");
+            await Wait(() => !originalQueryAgain.Loading);
+            check(originalQueryAgain.SearchQuery == "initial-query" && originalQueryAgain.CurrentPage == 1,
+                "an explicit repeat of the original query is not mistaken for Back navigation");
+            Leave(originalQueryAgain);
+
+            var state = App.GetService<CatalogNavigationState>();
+            state.BeginContainerNavigation(true);
+            state.BeginCatalogNavigation(false);
+            check(state.ConsumeHistoryNavigation() && !state.ConsumeHistoryNavigation(),
+                "parent Back navigation carries through a recreated catalog container exactly once");
 
             var perfVm = new PaginationTests.TestCatalog(http, new SearchProviderService()) { ResourceSource = 1 };
             int uiThreadId = 0;

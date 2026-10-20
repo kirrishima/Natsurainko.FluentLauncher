@@ -41,7 +41,6 @@ internal abstract partial class ResourceDefaultViewModel(
     private bool _slugMode;
     private bool _restoringState;
     private bool _resumeStateOnLoaded;
-    private string? _entryQuery;
 
     public double ScrollOffset { get; set; }
 
@@ -156,7 +155,9 @@ internal abstract partial class ResourceDefaultViewModel(
 
     void INavigationAware.OnNavigatedTo(object? parameter)
     {
-        var saved = _pageKey == null ? null : App.GetService<CatalogNavigationState>().Find(_pageKey);
+        var navigationState = App.GetService<CatalogNavigationState>();
+        bool history = navigationState.ConsumeHistoryNavigation();
+        var saved = _pageKey == null ? null : navigationState.Find(_pageKey);
         if (saved != null)
         {
             ApplyState(saved);
@@ -164,12 +165,11 @@ internal abstract partial class ResourceDefaultViewModel(
         }
         else UpdateFiltersSource();
 
-        // Back navigation replays the original parameter, even if the query was edited later.
-        if (parameter is string query && (saved == null || query != saved.EntryQuery))
+        // Back/Forward replays old parameters; an explicit new search must always start fresh.
+        if (parameter is string query && (saved == null || !history))
         {
             SearchQuery = query;
             Searched = !string.IsNullOrEmpty(query);
-            _entryQuery = query;
             CurrentPage = 1;
             _lastPage = null;
             ScrollOffset = 0;
@@ -369,7 +369,7 @@ internal abstract partial class ResourceDefaultViewModel(
         if (_pageKey == null) return;
         App.GetService<CatalogNavigationState>().Save(_pageKey,
             new(source, SearchQuery, SelectedCategory, FilteredVersion, CurrentPage, _lastPage,
-                ScrollOffset, _slugMode, _entryQuery));
+                ScrollOffset, _slugMode));
     }
 
     void ApplyState(CatalogSearchState state)
@@ -386,7 +386,6 @@ internal abstract partial class ResourceDefaultViewModel(
             CurrentPage = state.Page;
             _lastPage = state.LastPage;
             _slugMode = state.SlugMode;
-            _entryQuery = state.EntryQuery;
             ScrollOffset = state.ScrollOffset;
             HasNextPage = false;
         }

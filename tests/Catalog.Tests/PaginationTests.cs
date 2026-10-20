@@ -88,8 +88,9 @@ internal static class PaginationTests
         protected override ModrinthResourceType ModrinthResourceType => ModrinthResourceType.McMod;
         protected override string[] ModrinthCategories => ["all", "optimization"];
         protected override Dictionary<string, int> CurseForgeCategories => new() { ["All"] = 0 };
-        public void Start(string? query = null, string route = "Test/Default")
+        public void Start(string? query = null, string route = "Test/Default", bool history = false)
         {
+            App.GetService<CatalogNavigationState>().BeginCatalogNavigation(history);
             ((INavigationAware)this).SetNavigationKey(route);
             ((INavigationAware)this).OnNavigatedTo(query);
             IsActive = true;

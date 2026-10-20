@@ -1,6 +1,8 @@
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Media;
+using Microsoft.UI.Xaml.Navigation;
+using Natsurainko.FluentLauncher.Services.UI;
 using Natsurainko.FluentLauncher.ViewModels.Downloads;
 
 namespace Natsurainko.FluentLauncher.Views.Downloads;
@@ -9,6 +11,12 @@ public sealed partial class ResourceDefaultPage : Page
 {
     ResourceDefaultViewModel VM => (ResourceDefaultViewModel)DataContext;
     private ScrollViewer? _scrollViewer;
+
+    protected override void OnNavigatedTo(NavigationEventArgs e)
+    {
+        base.OnNavigatedTo(e);
+        App.GetService<CatalogNavigationState>().BeginCatalogNavigation(e.NavigationMode is NavigationMode.Back or NavigationMode.Forward);
+    }
 
     public ResourceDefaultPage()
     {

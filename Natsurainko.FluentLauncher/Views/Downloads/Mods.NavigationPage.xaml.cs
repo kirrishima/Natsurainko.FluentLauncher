@@ -3,6 +3,7 @@ using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Navigation;
 using Natsurainko.FluentLauncher.ViewModels.Downloads.Mods;
+using Natsurainko.FluentLauncher.Services.UI;
 using Natsurainko.FluentLauncher.Xaml.Converters;
 using Nrk.FluentCore.Resources;
 
@@ -17,6 +18,12 @@ public sealed partial class NavigationPage : Page, INavigationProvider
     public NavigationPage()
     {
         this.InitializeComponent();
+    }
+
+    protected override void OnNavigatedTo(NavigationEventArgs e)
+    {
+        base.OnNavigatedTo(e);
+        App.GetService<CatalogNavigationState>().BeginContainerNavigation(e.NavigationMode is NavigationMode.Back or NavigationMode.Forward);
     }
 
     private void ContentFrame_Navigated(object sender, NavigationEventArgs e)
