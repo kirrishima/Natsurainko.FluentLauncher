@@ -23,6 +23,7 @@ internal static class PaginationTests
         App.Set(cache);
         var server = new CatalogServer();
         using var http = new HttpClient(server);
+        App.Set(new CatalogVersionService(http, "test", cache, NullLogger<CatalogVersionService>.Instance));
         var search = new SearchProviderService();
         var vm = new TestCatalog(http, search) { ResourceSource = 1 };
         vm.Start();
@@ -79,7 +80,7 @@ internal static class PaginationTests
         while (!condition()) await Task.Delay(5, timeout.Token);
     }
 
-    sealed partial class TestCatalog(HttpClient http, SearchProviderService search) : ResourceDefaultViewModel(
+    internal sealed partial class TestCatalog(HttpClient http, SearchProviderService search) : ResourceDefaultViewModel(
         new CurseForgeClient("test", http), new ModrinthClient(http), new SettingsService(), new Navigation(), search)
     {
         protected override CurseForgeResourceType CurseForgeResourceType => CurseForgeResourceType.McMod;
@@ -104,6 +105,11 @@ internal static class PaginationTests
         public Dictionary<string, TaskCompletionSource<bool>> Pending { get; } = [];
         protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken token)
         {
+            if (request.RequestUri!.AbsolutePath == "/v2/tag/game_version")
+                return new HttpResponseMessage(HttpStatusCode.OK)
+                {
+                    Content = new StringContent("[{\"version\":\"test-version\",\"date\":\"2026-01-01T00:00:00Z\"}]")
+                };
             var parameters = HttpUtility.ParseQueryString(request.RequestUri!.Query);
             string query = parameters["query"] ?? "";
             if (query is "old" or "new" or "away")

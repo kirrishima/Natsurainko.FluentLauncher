@@ -89,7 +89,7 @@
                         <ComboBox
                             x:Name="VersionComboBox"
                             IsEditable="True"
-                            ItemsSource="{x:Bind baseVM:ResourceDefaultViewModel.MinecraftVersions}"
+                            ItemsSource="{x:Bind VM.MinecraftVersions, Mode=OneWay}"
                             Text="{x:Bind VM.FilteredVersion, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
                     </StackPanel>
                 </controls:WrapPanel>

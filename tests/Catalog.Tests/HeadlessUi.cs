@@ -12,7 +12,7 @@ namespace FluentLauncher.Infra.UI.Navigation
 }
 namespace FluentLauncher.Infra.UI.Notification
 {
-    internal enum NotificationType { Info, Error, Success }
+    internal enum NotificationType { Info, Warning, Error, Success }
     internal interface INotificationService
     {
         void Show<T>(Natsurainko.FluentLauncher.Services.UI.Notification.DefaultNotification notification);
@@ -33,6 +33,8 @@ namespace Natsurainko.FluentLauncher
         public const string Catalog__LastPage = "This is the last page. There are no more results.";
         public const string Catalog__SearchFailed = "Could not load the catalog page";
         public const string Catalog__Retry = "Please try refreshing the page.";
+        public const string Catalog__VersionsUnavailable = "Could not update Minecraft versions";
+        public const string Catalog__ManualVersion = "You can enter a version manually.";
     }
 }
 namespace Natsurainko.FluentLauncher.Services.UI.Notification

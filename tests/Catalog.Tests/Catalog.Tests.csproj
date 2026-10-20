@@ -10,6 +10,7 @@
     <FrameworkReference Include="Microsoft.AspNetCore.App" />
     <Compile Include="../../Natsurainko.FluentLauncher/Services/Network/CatalogPageCache.cs" Link="CatalogPageCache.cs" />
     <Compile Include="../../Natsurainko.FluentLauncher/Services/Network/CatalogCacheHandler.cs" Link="CatalogCacheHandler.cs" />
+    <Compile Include="../../Natsurainko.FluentLauncher/Services/Network/CatalogVersionService.cs" Link="CatalogVersionService.cs" />
     <Compile Include="../../Natsurainko.FluentLauncher/ViewModels/Downloads/ResourceDefaultViewModel.cs" Link="ResourceDefaultViewModel.cs" />
     <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.1" />
     <ProjectReference Include="../../Natsurainko.FluentCore/Natsurainko.FluentCore/Natsurainko.FluentCore.csproj" />
