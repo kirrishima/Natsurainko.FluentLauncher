@@ -2,6 +2,9 @@
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Http;
+using Microsoft.Extensions.Logging;
+using Natsurainko.FluentLauncher.Services.Network;
+using Natsurainko.FluentLauncher.Services.Settings;
 using Nrk.FluentCore.Resources;
 using Serilog;
 using System;
@@ -29,6 +32,15 @@ internal static class DependencyInjectionExtensions
 
     public static IServiceCollection UseHttpClient(this IServiceCollection services)
     {
+        services.AddSingleton(p => new CatalogPageCache(
+            Path.Combine(ApplicationData.Current.LocalCacheFolder.Path, "catalog-pages-v1"),
+            () =>
+            {
+                var settings = p.GetRequiredService<SettingsService>();
+                return new CatalogCacheOptions(settings.EnableCatalogCache, settings.CatalogCacheLifetimeMinutes, settings.CatalogCacheMaxSizeMb);
+            },
+            ex => p.GetRequiredService<ILogger<CatalogPageCache>>().LogWarning(ex, "Catalog cache is unavailable")));
+        services.AddTransient<CatalogCacheHandler>();
         PackageVersion v = Package.Current.Id.Version;
         ProductInfoHeaderValue userAgent = new("Natsurainko.FluentLauncher", v.GetVersionString());
 
@@ -36,6 +48,7 @@ internal static class DependencyInjectionExtensions
             .ConfigureHttpClientDefaults(builder =>
             {
                 builder.ConfigureHttpClient(c => c.DefaultRequestHeaders.UserAgent.Add(userAgent));
+                builder.AddHttpMessageHandler<CatalogCacheHandler>();
             });
 
         services.Replace(ServiceDescriptor.Singleton<IHttpMessageHandlerBuilderFilter, CustomHttpMessageHandlerBuilderFilter>());

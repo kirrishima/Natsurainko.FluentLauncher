@@ -96,6 +96,15 @@ public partial class SettingsService : SettingsContainer
     [SettingItem(Default = 6, Converter = typeof(JsonStringConverter<int>))]
     public partial int MaxRetryCount { get; set; }
 
+    [SettingItem(Default = true, Converter = typeof(JsonStringConverter<bool>))]
+    public partial bool EnableCatalogCache { get; set; }
+
+    [SettingItem(Default = 30, Converter = typeof(JsonStringConverter<int>))]
+    public partial int CatalogCacheLifetimeMinutes { get; set; }
+
+    [SettingItem(Default = 5, Converter = typeof(JsonStringConverter<int>))]
+    public partial int CatalogCacheMaxSizeMb { get; set; }
+
     #endregion
 
     [SettingItem(Default = "")]
