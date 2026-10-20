@@ -58,6 +58,9 @@ internal static class DependencyInjectionExtensions
 
     public static IServiceCollection UseResourceClients(this IServiceCollection services)
     {
+        services.AddSingleton(p => new CatalogVersionService(
+            p.GetRequiredService<HttpClient>(), CurseForgeClientApiKey,
+            p.GetRequiredService<CatalogPageCache>(), p.GetRequiredService<ILogger<CatalogVersionService>>()));
         services.AddSingleton<ModrinthClient>();
         services.AddSingleton(p =>
         {
