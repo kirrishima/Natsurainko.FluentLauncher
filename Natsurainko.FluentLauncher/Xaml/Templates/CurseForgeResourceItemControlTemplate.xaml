@@ -32,7 +32,7 @@
                         <Border CornerRadius="4">
                             <Image>
                                 <Image.Source>
-                                    <BitmapImage UriSource="{Binding IconUrl}" />
+                                    <BitmapImage UriSource="{Binding IconUrl}" DecodePixelType="Logical" DecodePixelWidth="48" />
                                 </Image.Source>
                             </Image>
                         </Border>

@@ -64,13 +64,11 @@ internal abstract partial class ResourceDefaultViewModel(
         PreviousPageCommand.NotifyCanExecuteChanged();
         NextPageCommand.NotifyCanExecuteChanged();
         RefreshCommand.NotifyCanExecuteChanged();
-        ResourceItemInvokeCommand.NotifyCanExecuteChanged();
     }
 
     bool CanPreviousPage() => !Loading && CurrentPage > 1;
     bool CanNextPage() => !Loading && HasNextPage;
     bool CanRefresh() => !Loading;
-    bool CanOpenResource() => !Loading;
 
     [RelayCommand(CanExecute = nameof(CanPreviousPage))]
     Task PreviousPage() => LoadPageAsync(CurrentPage - 1);
@@ -86,6 +84,7 @@ internal abstract partial class ResourceDefaultViewModel(
     }
 
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(ShowEmptyResults))]
     public partial ObservableCollection<object>? SearchResult { get; set; }
 
     [ObservableProperty]
@@ -104,10 +103,14 @@ internal abstract partial class ResourceDefaultViewModel(
     public partial string[] MinecraftVersions { get; set; } = [LocalizedStrings.ResourceCategories__All];
 
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(ShowEmptyResults))]
     public partial bool Loading { get; set; }
 
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(ShowEmptyResults))]
     public partial bool LoadFailed { get; set; }
+
+    public bool ShowEmptyResults => !Loading && !LoadFailed && SearchResult is { Count: 0 };
 
     [ObservableProperty]
     public partial bool Searched { get; set; }
@@ -246,8 +249,14 @@ internal abstract partial class ResourceDefaultViewModel(
         }
     }
 
-    [RelayCommand(CanExecute = nameof(CanOpenResource))]
-    void ResourceItemInvoke(object mod) => navigationService.NavigateTo(_pageKey!.Replace("Default", "Resource"), mod);
+    [RelayCommand]
+    void ResourceItemInvoke(object mod)
+    {
+        // Keep the normal card appearance while busy, but ignore stale card activation.
+        if (!Loading) OpenResource(mod);
+    }
+
+    void OpenResource(object mod) => navigationService.NavigateTo(_pageKey!.Replace("Default", "Resource"), mod);
 
     [RelayCommand]
     void ClearSearchQuery()
@@ -266,6 +275,7 @@ internal abstract partial class ResourceDefaultViewModel(
         CurrentPage = 1;
         ScrollOffset = 0;
         HasNextPage = false;
+        Loading = true;
         SearchResult = [];
         Searched = !string.IsNullOrEmpty(query);
         await LoadPageAsync(1);
@@ -338,7 +348,7 @@ internal abstract partial class ResourceDefaultViewModel(
             PageChanged?.Invoke();
 
             if (slugMode && source == 0 && result.Length == 1)
-                ResourceItemInvoke(result[0]);
+                OpenResource(result[0]);
         }
         catch (OperationCanceledException) when (token.IsCancellationRequested) { }
         catch (Exception ex)

@@ -29,9 +29,11 @@
                         BorderBrush="{ThemeResource IconBorder}"
                         BorderThickness="2"
                         CornerRadius="4">
-                        <Border.Background>
-                            <ImageBrush ImageSource="{Binding IconUrl}" />
-                        </Border.Background>
+                        <Image Stretch="Uniform">
+                            <Image.Source>
+                                <BitmapImage UriSource="{Binding IconUrl}" DecodePixelType="Logical" DecodePixelWidth="48" />
+                            </Image.Source>
+                        </Image>
                     </Border>
                     <StackPanel
                         Grid.Column="2"

@@ -26,10 +26,15 @@ internal static class PaginationTests
         using var http = new HttpClient(server);
         App.Set(new CatalogVersionService(http, "test", cache, NullLogger<CatalogVersionService>.Instance));
         var search = new SearchProviderService();
-        var vm = new TestCatalog(http, search) { ResourceSource = 1 };
+        var navigation = new Navigation();
+        var vm = new TestCatalog(http, search, navigation) { ResourceSource = 1 };
         vm.Start();
         await Wait(() => !vm.Loading);
         check(vm.CurrentPage == 1 && vm.SearchResult?.Count == 50 && vm.HasNextPage, "full first page enables Next");
+        check(!vm.ShowEmptyResults, "populated catalog does not show the empty-results overlay");
+        object resource = vm.SearchResult![0];
+        vm.ResourceItemInvokeCommand.Execute(resource);
+        check(navigation.Count == 1, "ready resource card opens its detail page");
         await vm.NextPageCommand.ExecuteAsync(null);
         check(vm.CurrentPage == 2 && vm.SearchResult?.Count == 50 && vm.HasNextPage, "second page uses offset and enables probing for more");
         object firstOnLastPage = vm.SearchResult![0];
@@ -54,9 +59,14 @@ internal static class PaginationTests
         await Wait(() => !vm.Loading);
         check(vm.CurrentPage == 1 && vm.SearchResult?.Count == 0 && !vm.HasNextPage && notices.Items.Count == 1,
             "empty first page does not show a misleading last-page notice");
+        check(vm.ShowEmptyResults, "completed empty search shows the empty-results overlay");
 
         search.Submit!("old");
         await Wait(() => server.Pending.ContainsKey("old"));
+        check(!vm.ShowEmptyResults, "starting a search hides the empty-results overlay before results arrive");
+        check(vm.ResourceItemInvokeCommand.CanExecute(resource), "loading does not switch cards into their disabled visual state");
+        vm.ResourceItemInvokeCommand.Execute(resource);
+        check(navigation.Count == 1, "busy cards ignore activation without opening stale results");
         search.Submit!("new");
         await Wait(() => server.Pending.ContainsKey("new"));
         check(vm.Loading && !vm.NextPageCommand.CanExecute(null) && !vm.RefreshCommand.CanExecute(null), "page controls are disabled during loading");
@@ -81,8 +91,8 @@ internal static class PaginationTests
         while (!condition()) await Task.Delay(5, timeout.Token);
     }
 
-    internal sealed partial class TestCatalog(HttpClient http, SearchProviderService search) : ResourceDefaultViewModel(
-        new CurseForgeClient("test", http), new ModrinthClient(http), new SettingsService(), new Navigation(), search)
+    internal sealed partial class TestCatalog(HttpClient http, SearchProviderService search, INavigationService? navigation = null) : ResourceDefaultViewModel(
+        new CurseForgeClient("test", http), new ModrinthClient(http), new SettingsService(), navigation ?? new Navigation(), search)
     {
         protected override CurseForgeResourceType CurseForgeResourceType => CurseForgeResourceType.McMod;
         protected override ModrinthResourceType ModrinthResourceType => ModrinthResourceType.McMod;
@@ -97,7 +107,11 @@ internal static class PaginationTests
             OnLoaded();
         }
     }
-    sealed class Navigation : INavigationService { public void NavigateTo(string key, object parameter) { } }
+    sealed class Navigation : INavigationService
+    {
+        public int Count { get; private set; }
+        public void NavigateTo(string key, object parameter) => Count++;
+    }
     sealed class Notices : INotificationService
     {
         public List<DefaultNotification> Items { get; } = [];
