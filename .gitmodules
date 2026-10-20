@@ -1,12 +1,12 @@
 [submodule "Natsurainko.FluentCore"]
 	path = Natsurainko.FluentCore
-	url = https://github.com/Xcube-Studio/Natsurainko.FluentCore.git
+	url = https://github.com/kirrishima/Natsurainko.FluentCore.git
 [submodule "FluentLauncher.Infra.ExtensionHost"]
 	path = FluentLauncher.Infra.ExtensionHost
 	url = https://github.com/Xcube-Studio/FluentLauncher.Infra.ExtensionHost.git
 [submodule "FluentLauncher.Infra.Localization"]
 	path = FluentLauncher.Infra.Localization
-	url = https://github.com/Xcube-Studio/FluentLauncher.Infra.Localization.git
+	url = https://github.com/kirrishima/FluentLauncher.Infra.Localization.git
 [submodule "FluentLauncher.Infra.Settings"]
 	path = FluentLauncher.Infra.Settings
 	url = https://github.com/Xcube-Studio/FluentLauncher.Infra.Settings.git
