@@ -15,6 +15,7 @@ using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
 using System.Globalization;
+using System.Diagnostics;
 using System.Threading;
 using System.Threading.Tasks;
 using static Natsurainko.FluentLauncher.Services.UI.SearchProviderService;
@@ -38,6 +39,11 @@ internal abstract partial class ResourceDefaultViewModel(
     private int _searchGeneration;
     private int? _lastPage;
     private bool _slugMode;
+    private bool _restoringState;
+    private bool _resumeStateOnLoaded;
+    private string? _entryQuery;
+
+    public double ScrollOffset { get; set; }
 
     public event Action? PageChanged;
 
@@ -59,11 +65,13 @@ internal abstract partial class ResourceDefaultViewModel(
         PreviousPageCommand.NotifyCanExecuteChanged();
         NextPageCommand.NotifyCanExecuteChanged();
         RefreshCommand.NotifyCanExecuteChanged();
+        ResourceItemInvokeCommand.NotifyCanExecuteChanged();
     }
 
     bool CanPreviousPage() => !Loading && CurrentPage > 1;
     bool CanNextPage() => !Loading && HasNextPage;
     bool CanRefresh() => !Loading;
+    bool CanOpenResource() => !Loading;
 
     [RelayCommand(CanExecute = nameof(CanPreviousPage))]
     Task PreviousPage() => LoadPageAsync(CurrentPage - 1);
@@ -116,44 +124,67 @@ internal abstract partial class ResourceDefaultViewModel(
 
     protected abstract Dictionary<string, int> CurseForgeCategories { get; }
 
-    partial void OnResourceSourceChanged(int value)
+    partial void OnResourceSourceChanged(int oldValue, int newValue)
     {
+        if (_restoringState) return;
+        RememberState(oldValue);
         depressCategoryChangedInvokeSearch = true;
-
         UpdateFiltersSource();
-        SearchReceiveHandle(SearchQuery);
-
+        var saved = _pageKey == null ? null : App.GetService<CatalogNavigationState>().Find(_pageKey, newValue);
+        if (saved != null && saved.Query == SearchQuery && saved.Version == FilteredVersion)
+        {
+            ApplyState(saved);
+            if (IsActive) _ = LoadPageAsync(CurrentPage, restoreScroll: true);
+        }
+        else SearchReceiveHandle(SearchQuery);
         depressCategoryChangedInvokeSearch = false;
         if (IsActive) _ = UpdateVersionsAsync();
     }
 
     partial void OnSelectedCategoryChanged(string value)
     {
-        if (!depressCategoryChangedInvokeSearch)
+        if (!depressCategoryChangedInvokeSearch && !_restoringState)
             SearchReceiveHandle(SearchQuery);
     }
 
     partial void OnFilteredVersionChanged(string value)
     {
-        if (!_updatingVersionList) SearchReceiveHandle(SearchQuery);
+        if (!_updatingVersionList && !_restoringState) SearchReceiveHandle(SearchQuery);
     }
 
     void INavigationAware.SetNavigationKey(string key) => _pageKey = key;
 
     void INavigationAware.OnNavigatedTo(object? parameter)
     {
-        UpdateFiltersSource();
+        var saved = _pageKey == null ? null : App.GetService<CatalogNavigationState>().Find(_pageKey);
+        if (saved != null)
+        {
+            ApplyState(saved);
+            _resumeStateOnLoaded = true;
+        }
+        else UpdateFiltersSource();
 
-        if (parameter is string query)
+        // Back navigation replays the original parameter, even if the query was edited later.
+        if (parameter is string query && (saved == null || query != saved.EntryQuery))
+        {
             SearchQuery = query;
+            Searched = !string.IsNullOrEmpty(query);
+            _entryQuery = query;
+            CurrentPage = 1;
+            _lastPage = null;
+            ScrollOffset = 0;
+            _slugMode = false;
+        }
 
         _bindedSearchProvider = searchProviderService.BindProvider(this);
+        _bindedSearchProvider.SetInput(SearchQuery);
         _bindedSearchProvider.BindQuerySubmition(query => SearchReceiveHandle(query));
         _bindedSearchProvider.BindSuggestionsSource(SuggestionProvider);
     }
 
     void INavigationAware.OnNavigatedFrom() 
     {
+        RememberState(ResourceSource);
         _bindedSearchProvider?.Dispose();
 
         _cancellationTokenSource?.Cancel();
@@ -165,12 +196,16 @@ internal abstract partial class ResourceDefaultViewModel(
         ++_searchGeneration;
         Loading = false;
 
-        GC.Collect();
     }
 
     protected override void OnLoaded()
     {
-        SearchReceiveHandle(SearchQuery);
+        if (_resumeStateOnLoaded)
+        {
+            _resumeStateOnLoaded = false;
+            _ = LoadPageAsync(CurrentPage, restoreScroll: true);
+        }
+        else SearchReceiveHandle(SearchQuery);
         depressCategoryChangedInvokeSearch = false;
         _ = UpdateVersionsAsync();
     }
@@ -184,7 +219,8 @@ internal abstract partial class ResourceDefaultViewModel(
         int source = ResourceSource;
         try
         {
-            var versions = await App.GetService<CatalogVersionService>().GetVersionsAsync(source, token, refresh);
+            var service = App.GetService<CatalogVersionService>();
+            var versions = await Task.Run(() => service.GetVersionsAsync(source, token, refresh), token);
             if (token.IsCancellationRequested || source != ResourceSource || !IsActive) return;
             string selectedVersion = FilteredVersion;
             _updatingVersionList = true;
@@ -210,7 +246,7 @@ internal abstract partial class ResourceDefaultViewModel(
         }
     }
 
-    [RelayCommand]
+    [RelayCommand(CanExecute = nameof(CanOpenResource))]
     void ResourceItemInvoke(object mod) => navigationService.NavigateTo(_pageKey!.Replace("Default", "Resource"), mod);
 
     [RelayCommand]
@@ -228,15 +264,17 @@ internal abstract partial class ResourceDefaultViewModel(
         _slugMode = slugMode;
         _lastPage = null;
         CurrentPage = 1;
+        ScrollOffset = 0;
         HasNextPage = false;
         SearchResult = [];
         Searched = !string.IsNullOrEmpty(query);
         await LoadPageAsync(1);
     }
 
-    async Task LoadPageAsync(int page, bool refresh = false)
+    async Task LoadPageAsync(int page, bool refresh = false, bool restoreScroll = false)
     {
         if (!IsActive) return;
+        var stopwatch = Stopwatch.StartNew();
 
         _cancellationTokenSource?.Cancel();
         _cancellationTokenSource?.Dispose();
@@ -268,9 +306,8 @@ internal abstract partial class ResourceDefaultViewModel(
 
         try
         {
-            object[] result = refresh
-                ? await App.GetService<CatalogPageCache>().RefreshAsync(FetchAsync)
-                : await FetchAsync();
+            var cache = App.GetService<CatalogPageCache>();
+            object[] result = await Task.Run(() => refresh ? cache.RefreshAsync(FetchAsync) : FetchAsync(), token);
             if (token.IsCancellationRequested || generation != _searchGeneration || !IsActive) return;
 
             if (result.Length == 0 && page > CurrentPage)
@@ -292,10 +329,12 @@ internal abstract partial class ResourceDefaultViewModel(
             if (result.Length < PageSize) _lastPage = page;
             SearchResult = new(result);
             CurrentPage = page;
+            if (!restoreScroll) ScrollOffset = 0;
             HasNextPage = result.Length == PageSize && (!_lastPage.HasValue || page < _lastPage.Value)
                 && (source != 0 || page * PageSize < 10000);
             App.GetService<ILogger<ResourceDefaultViewModel>>().LogInformation(
-                "Catalog {Source} page {Page}: {Count} results", source == 0 ? "CurseForge" : "Modrinth", page, result.Length);
+                "Catalog {Source} page {Page}: {Count} results in {ElapsedMs} ms",
+                source == 0 ? "CurseForge" : "Modrinth", page, result.Length, stopwatch.ElapsedMilliseconds);
             PageChanged?.Invoke();
 
             if (slugMode && source == 0 && result.Length == 1)
@@ -324,6 +363,35 @@ internal abstract partial class ResourceDefaultViewModel(
 
     static void ShowCatalogNotice(string title) => App.GetService<INotificationService>().Show<InfoBar>(
         new DefaultNotification { Title = title, Delay = 5 });
+
+    void RememberState(int source)
+    {
+        if (_pageKey == null) return;
+        App.GetService<CatalogNavigationState>().Save(_pageKey,
+            new(source, SearchQuery, SelectedCategory, FilteredVersion, CurrentPage, _lastPage,
+                ScrollOffset, _slugMode, _entryQuery));
+    }
+
+    void ApplyState(CatalogSearchState state)
+    {
+        _restoringState = true;
+        try
+        {
+            ResourceSource = state.Source;
+            UpdateFiltersSource();
+            SelectedCategory = Categories.Contains(state.Category) ? state.Category : Categories[0];
+            FilteredVersion = state.Version;
+            SearchQuery = state.Query;
+            Searched = !string.IsNullOrEmpty(state.Query);
+            CurrentPage = state.Page;
+            _lastPage = state.LastPage;
+            _slugMode = state.SlugMode;
+            _entryQuery = state.EntryQuery;
+            ScrollOffset = state.ScrollOffset;
+            HasNextPage = false;
+        }
+        finally { _restoringState = false; }
+    }
 
     void UpdateFiltersSource()
     {

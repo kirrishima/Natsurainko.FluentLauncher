@@ -5,6 +5,7 @@ using Microsoft.Extensions.Http;
 using Microsoft.Extensions.Logging;
 using Natsurainko.FluentLauncher.Services.Network;
 using Natsurainko.FluentLauncher.Services.Settings;
+using Natsurainko.FluentLauncher.Services.UI;
 using Nrk.FluentCore.Resources;
 using Serilog;
 using System;
@@ -58,6 +59,7 @@ internal static class DependencyInjectionExtensions
 
     public static IServiceCollection UseResourceClients(this IServiceCollection services)
     {
+        services.AddSingleton<CatalogNavigationState>();
         services.AddSingleton(p => new CatalogVersionService(
             p.GetRequiredService<HttpClient>(), CurseForgeClientApiKey,
             p.GetRequiredService<CatalogPageCache>(), p.GetRequiredService<ILogger<CatalogVersionService>>()));

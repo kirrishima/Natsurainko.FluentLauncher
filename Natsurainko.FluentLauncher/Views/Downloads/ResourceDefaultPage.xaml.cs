@@ -8,15 +8,45 @@ namespace Natsurainko.FluentLauncher.Views.Downloads;
 public sealed partial class ResourceDefaultPage : Page
 {
     ResourceDefaultViewModel VM => (ResourceDefaultViewModel)DataContext;
+    private ScrollViewer? _scrollViewer;
 
     public ResourceDefaultPage()
     {
         InitializeComponent();
-        Loaded += (_, _) => VM.PageChanged += ScrollToTop;
-        Unloaded += (_, _) => VM.PageChanged -= ScrollToTop;
+        Loaded += (_, _) =>
+        {
+            VM.PageChanged += RestoreScroll;
+            _scrollViewer = FindScrollViewer(ListView);
+            if (_scrollViewer != null) _scrollViewer.ViewChanged += OnScrollChanged;
+        };
+        Unloaded += (_, _) =>
+        {
+            VM.PageChanged -= RestoreScroll;
+            if (_scrollViewer != null) _scrollViewer.ViewChanged -= OnScrollChanged;
+            _scrollViewer = null;
+        };
     }
 
-    void ScrollToTop() => DispatcherQueue.TryEnqueue(() => FindScrollViewer(ListView)?.ChangeView(null, 0, null, true));
+    void OnScrollChanged(object? sender, ScrollViewerViewChangedEventArgs args)
+    {
+        if (!VM.Loading && _scrollViewer != null) VM.ScrollOffset = _scrollViewer.VerticalOffset;
+    }
+
+    void RestoreScroll()
+    {
+        double offset = VM.ScrollOffset;
+        DispatcherQueue.TryEnqueue(() =>
+        {
+            ListView.UpdateLayout();
+            _scrollViewer ??= FindScrollViewer(ListView);
+            if (_scrollViewer != null)
+            {
+                _scrollViewer.ViewChanged -= OnScrollChanged;
+                _scrollViewer.ViewChanged += OnScrollChanged;
+                _scrollViewer.ChangeView(null, offset, null, true);
+            }
+        });
+    }
 
     static ScrollViewer? FindScrollViewer(DependencyObject root)
     {

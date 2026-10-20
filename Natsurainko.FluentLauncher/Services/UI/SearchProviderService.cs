@@ -114,6 +114,8 @@ public partial class SearchProviderService
 
         public void ClearInput() => SearchBox.Text = string.Empty;
 
+        public void SetInput(string query) => SearchBox.Text = query;
+
         public void Dispose()
         {
             if (_suggestionsSourceBinded)
