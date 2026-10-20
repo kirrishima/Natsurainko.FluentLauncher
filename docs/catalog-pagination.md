@@ -4,6 +4,16 @@ CurseForge and Modrinth catalogs load 50 resources per page. Search, category, v
 
 A page with fewer than 50 results ends pagination. If a full final page is followed by an empty response, the populated page stays visible, Next is disabled and an informational InfoBar appears for five seconds. CurseForge's 10,000-result API window is respected. Search errors are logged and shown in an error InfoBar without discarding an already displayed page. Cancelled or superseded searches cannot update the current results.
 
+## Navigation and responsiveness
+
+Each catalog remembers its current provider, submitted query, filters, page, known end and scroll position for the current application session. Returning from a resource restores that state and the search-box text, even when the navigation framework creates a new view model. Switching providers retains their individual page/category/scroll state when the query and version still match. Explicitly navigating to a new search starts on page one. Only navigation metadata is retained in memory; resource responses continue to use the bounded disk cache and its expiration policy.
+
+HTTP cache access, response parsing and version-list processing run outside the UI thread. Catalog navigation no longer forces a full garbage collection. Page loads log their elapsed time; cached responses also produce a cache-hit log entry. Resource buttons are disabled during a provider/page change so old results cannot be opened under the new provider heading.
+
+## Resource content height
+
+Descriptions (HTML and Markdown) and screenshots have independent height sliders, from 300 to 1600 pixels, initially 600 pixels. The selected heights are saved in launcher settings and reused across resources and launches. HTML descriptions scroll inside their chosen viewport; Markdown has a bounded scroll viewer. The former delayed HTML height estimation has been removed, so loading images cannot leave the viewport at an inaccurate estimated height.
+
 ## Cache settings
 
 Settings → Downloads → Catalog cache follows Download Behavior.
