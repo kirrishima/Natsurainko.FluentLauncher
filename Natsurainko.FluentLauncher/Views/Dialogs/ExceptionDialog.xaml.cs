@@ -19,6 +19,7 @@ public sealed partial class ExceptionDialog : ContentDialog, IRecipient<Exceptio
 
         XamlRoot = MainWindow.XamlRoot;
         RequestedTheme = (App.MainWindow.Content as FrameworkElement)!.RequestedTheme;
+        TextBlock.Text = App.GetErrorMessage(exception);
 
         Segmented.Items.Add(new SegmentedItem
         {
@@ -45,7 +46,9 @@ public sealed partial class ExceptionDialog : ContentDialog, IRecipient<Exceptio
     }
     private void Segmented_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
-        TextBlock.Text = App.GetErrorMessage((Exception)((SegmentedItem)Segmented.SelectedItem).Tag!);
+        // Applying the Segmented template can temporarily clear its selection.
+        if (TextBlock is { } textBlock && sender is Segmented { SelectedItem: SegmentedItem { Tag: Exception exception } })
+            textBlock.Text = App.GetErrorMessage(exception);
     }
 
     private async void CopyButton_Click(object sender, RoutedEventArgs e)
