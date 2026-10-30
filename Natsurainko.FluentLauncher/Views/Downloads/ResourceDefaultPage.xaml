@@ -134,9 +134,9 @@
             <TextBlock x:Uid="Downloads_ResourceDefaultPage_Text3" Margin="0,-4,0,0" FontSize="28"
                 Style="{ThemeResource BaseTextBlockStyle}" Text="No results found" />
         </StackPanel>
-        <HyperlinkButton x:Uid="Downloads_ResourceDefaultPage_Text4" Padding="5,0,5,0.5"
+        <HyperlinkButton Padding="5,0,5,0.5"
             HorizontalAlignment="Center" Command="{x:Bind VM.ClearSearchQueryCommand}">
-            <TextBlock Text="Try other" />
+            <TextBlock x:Uid="Downloads_ResourceDefaultPage_Text4" Text="Try other" />
         </HyperlinkButton>
     </StackPanel>
     <controls:WrapPanel Grid.Row="1" Margin="20,12,20,20" HorizontalAlignment="Center" HorizontalSpacing="12" VerticalSpacing="8">

@@ -96,6 +96,7 @@ try
     await PaginationTests.Run(Check, cache);
     await VersionTests.Run(Check);
     await NavigationTests.Run(Check);
+    LocalizationTests.Run(Check);
     if (args.Contains("--live-versions")) await VersionTests.RunLive(Check);
 }
 finally
