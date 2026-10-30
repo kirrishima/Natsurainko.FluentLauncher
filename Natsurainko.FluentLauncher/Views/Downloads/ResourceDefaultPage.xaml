@@ -128,7 +128,7 @@
     </ListView>
     <!-- Status content must not change the scrollable header's height. -->
     <StackPanel x:Name="EmptyStackPanel" HorizontalAlignment="Center" VerticalAlignment="Center"
-        x:Load="{x:Bind VM.ShowEmptyResults, Mode=OneWay}" Spacing="4">
+        Visibility="{x:Bind VM.ShowEmptyResults, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}" Spacing="4">
         <StackPanel HorizontalAlignment="Center" Orientation="Horizontal" Spacing="8">
             <FontIcon FontSize="32" Glyph="&#xe74c;" />
             <TextBlock x:Uid="Downloads_ResourceDefaultPage_Text3" Margin="0,-4,0,0" FontSize="28"

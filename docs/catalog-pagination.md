@@ -50,6 +50,8 @@ For UI verification, check both providers, navigate forwards/backwards, change f
 
 In both light and dark themes, scroll rapidly to the bottom and back: resource rows must not be replaced by solid scrolling placeholders. During provider/filter changes, confirm that loading does not briefly show “No results” or move the filter header. Return from a resource and immediately scroll manually; a queued restoration must not pull the viewport back after that input. These rendering checks require the deployed WinUI application; the headless regression checks do not validate animation or frame rendering.
 
+For the empty-search regression, submit a query with no matches, then submit another query, refresh, change filters, and switch providers. Repeat several times, including Back navigation from a resource. The empty-results panel stays in the visual tree and toggles Visibility, avoiding the failing XamlMarkupHelper.UnloadObject path seen in 2.3.9.0. The exception dialog also tolerates a temporarily empty Segmented selection while its template is applied; its initial error text is set before selecting the first tab. These fix the primary empty-search exception and the secondary exception while displaying its error dialog.
+
 ## Publishing the branch
 
 The main repository references local feature commits in the FluentCore and Localization submodules. Before sharing the branch, push both submodule branches to their respective forks, update their URLs in `.gitmodules` to those forks, commit that URL change, then push the main repository branch. Do not run `git submodule update --remote`, which would replace the pinned feature revisions.
